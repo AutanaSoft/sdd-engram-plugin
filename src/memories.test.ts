@@ -12,7 +12,7 @@ describe('memories logic', () => {
   const mockApi = { state: { path: { directory: '/path/to/repo' } } };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockFetch.mockReset();
   });
 
@@ -94,6 +94,19 @@ describe('memories logic', () => {
       mockFetch.mockRejectedValue(new Error('network error'));
 
       expect(await listProjectMemories(mockApi)).toEqual([]);
+    });
+
+    it('should log candidate fetch failures before returning empty list', async () => {
+      vi.mocked(resolveProjectCandidates).mockReturnValue(['repo']);
+      const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockFetch.mockRejectedValue(new Error('network error'));
+
+      expect(await listProjectMemories(mockApi)).toEqual([]);
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[sdd-plugin][memories] listProjectMemories: failed to fetch recent observations for candidate 'repo'"),
+        expect.any(Error)
+      );
+      stderrSpy.mockRestore();
     });
   });
 
