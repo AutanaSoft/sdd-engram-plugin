@@ -141,15 +141,15 @@ describe('dialog pure builders', () => {
       id: 'team.json/2026-04-26T10-00-00-000Z-a.json',
       profileFile: 'team.json',
       createdAt: '2026-04-26T10:00:00.000Z',
-      source: PROFILE_VERSION_SOURCE.PHASE,
-      operation: { target: BULK_ASSIGNMENT_TARGET.BOTH, mode: BULK_ASSIGNMENT_MODE.FILL_ONLY },
+      source: PROFILE_VERSION_SOURCE.BULK,
+      operation: { source: PROFILE_VERSION_SOURCE.BULK, target: BULK_ASSIGNMENT_TARGET.BOTH, mode: BULK_ASSIGNMENT_MODE.FILL_ONLY },
       operationSummary: 'Set 2 primary and 1 fallback phases',
       beforeRaw: '{"models":{"sdd-init":"old/model"},"fallback":{"sdd-init":"old/fallback"}}',
       preview: { models: { 'sdd-init': 'old/model' }, fallback: { 'sdd-init': 'old/fallback' } }
     });
 
     expect(lines).toContain('Profile: team.json');
-    expect(lines).toContain('Source: Phase');
+    expect(lines).toContain('Source: Bulk');
     expect(lines).toContain('Operation: Set 2 primary and 1 fallback phases');
     expect(lines).toContain('Primary: sdd-init -> old/model');
     expect(lines).toContain('Fallback: sdd-init -> old/fallback');

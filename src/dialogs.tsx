@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 /**
  * Plugin UI Dialogs
  * 
@@ -28,7 +26,7 @@ import {
   isFallbackEligibleSddAgent,
   isPrimarySddAgent,
 } from "./utils";
-import { resolvePaths, ensureProfilesDir, resolveProjectName } from "./config";
+import { resolveEngramProjectName, resolvePaths, ensureProfilesDir, resolveProjectName } from "./config";
 import {
   listProfileFiles,
   readProfileData,
@@ -48,7 +46,10 @@ import {
 import { buildReasoningEditState, updateProfileReasoningEffort } from "./profile-reasoning";
 import { deleteProjectMemory, listProjectMemories } from "./memories";
 import { setActiveProfile } from "./state";
+import { createLogger } from "./logger";
 import { canonicalizeProfileModels, getOrchestratorPolicy, type OrchestratorPolicy } from "./orchestrator";
+
+const log = createLogger("dialogs");
 
 export function resolveRuntimeOrchestratorPolicy(config: any): OrchestratorPolicy {
   return getOrchestratorPolicy(
@@ -121,7 +122,8 @@ export function returnToProfileDetailTarget(
     if (returnTarget === "primary") showPrimary(api, profileOpt, profileData, sections);
     else if (returnTarget === "reasoning") showReasoning(api, profileOpt, profileData, sections);
     else showFallback(api, profileOpt, profileData, sections);
-  } catch {
+  } catch (error) {
+    log.warn(`returnToProfileDetailTarget: failed to return to ${returnTarget} for ${profileOpt?.value}`, error);
     showHub(api, profileOpt);
   }
 }
@@ -361,6 +363,7 @@ function showDeleteMemory(api: any, memory: any) {
           api.ui.toast({ title: "Deleted", message: "Memory deleted successfully", variant: "success" });
           showProjectMemoriesMenuFn(api);
         } catch (e: any) {
+          log.error(`showDeleteMemory: failed to delete memory ${memory?.id}`, e);
           api.ui.toast({ title: "Error", message: e.message || "Failed to delete memory", variant: "error" });
           showMemoryDetail(api, memory);
         }
@@ -558,6 +561,7 @@ export function showCreateProfile(api: any) {
             });
           }, 0);
         } catch (e: any) {
+          log.error(`showCreateProfile: failed to create profile '${trimmed}'`, e);
           api.ui.toast({
             title: "Error",
             message: `Failed to create profile: ${e.message}`,
@@ -632,6 +636,7 @@ export function showProfileDetail(api: any, profileOpt: any) {
       />
     ));
   } catch (e) {
+    log.error(`showProfileDetail: failed to read profile '${profileOpt?.value}'`, e);
     api.ui.toast({ title: "Error", message: "Failed to read profile details", variant: "error" });
   }
 }
@@ -804,6 +809,7 @@ function showReasoningEffortPicker(api: any, profileOpt: any, agentName: string,
       />
     ));
   } catch (e: any) {
+    log.error(`showReasoningEffortEditor: failed to update ${agentName}`, e);
     api.ui.toast({ title: "Error", message: `Failed to update reasoning effort: ${e.message}`, variant: "error" });
     returnToProfileDetailTarget(api, profileOpt, returnTarget);
   }
@@ -843,6 +849,7 @@ function showDeleteProfile(api: any, profileOpt: any) {
           api.ui.toast({ title: "Deleted", message: `Profile '${profileOpt.title}' deleted` });
           showProfileListFn(api);
         } catch (e: any) {
+          log.error(`showDeleteProfile: failed to delete profile '${profileOpt?.value}'`, e);
           api.ui.toast({ title: "Error", message: `Failed to delete: ${e.message}`, variant: "error" });
           showProfileDetailFn(api, profileOpt);
         }
@@ -884,6 +891,7 @@ function showRenameProfile(api: any, profileOpt: any) {
           api.ui.toast({ title: "Renamed", message: `Profile renamed to '${finalName}'` });
           showProfileListFn(api);
         } catch (e: any) {
+          log.error(`showRenameProfile: failed to rename profile '${profileOpt?.value}' to '${newName}'`, e);
           api.ui.toast({ title: "Error", message: `Failed to rename: ${e.message}`, variant: "error" });
           showProfileDetailFn(api, profileOpt);
         }
@@ -1024,6 +1032,7 @@ function updateBulkProfilePhases(api: any, profileOpt: any, fullModelId: string,
     });
     showProfileDetailFn(api, profileOpt);
   } catch (e: any) {
+    log.error(`handleBulkModelSelection: failed for profile '${profileOpt?.value}'`, e);
     api.ui.toast({ title: "Error", message: `Failed to update phases: ${e.message}`, variant: "error" });
     showProfileDetailFn(api, profileOpt);
   }
@@ -1054,6 +1063,7 @@ function showProfileVersions(api: any, profileOpt: any) {
       />
     ));
   } catch (e: any) {
+    log.error(`showProfileVersions: failed to list versions for '${profileOpt?.value}'`, e);
     api.ui.toast({ title: "Version Error", message: e.message || "Failed to list profile versions", variant: "error" });
     showProfileDetailFn(api, profileOpt);
   }
@@ -1081,6 +1091,7 @@ function showProfileVersionPreview(api: any, profileOpt: any, versionId: string)
       />
     ));
   } catch (e: any) {
+    log.error(`showProfileVersionPreview: failed to read version '${versionId}'`, e);
     api.ui.toast({ title: "Version Error", message: e.message || "Failed to read profile version", variant: "error" });
     showProfileVersions(api, profileOpt);
   }
@@ -1097,6 +1108,7 @@ function showConfirmRestoreProfileVersion(api: any, profileOpt: any, versionId: 
           api.ui.toast({ title: "Restored", message: `Profile '${profileOpt.title}' restored`, variant: "success" });
           showProfileDetailFn(api, profileOpt);
         } catch (e: any) {
+          log.error(`showConfirmRestoreProfileVersion: failed to restore '${versionId}'`, e);
           api.ui.toast({ title: "Restore Failed", message: e.message || "Failed to restore version", variant: "error" });
           showProfileVersionPreview(api, profileOpt, versionId);
         }
@@ -1222,6 +1234,7 @@ function updateAgentModel(
     }
     returnToProfileDetailTarget(api, profileOpt, returnTarget);
   } catch (e: any) {
+    log.error(`handleModelSelection: failed to update ${agentName}`, e);
     api.ui.toast({ title: "Error", message: `Failed to update agent: ${e.message}`, variant: "error" });
     returnToProfileDetailTarget(api, profileOpt, returnTarget);
   }
@@ -1233,7 +1246,7 @@ function updateAgentModel(
  * @param api - The TUI API instance
  */
 export async function showProjectMemoriesMenu(api: any) {
-  const projectName = resolveProjectName(api) || "project";
+  const projectName = resolveEngramProjectName(api) || resolveProjectName(api) || "project";
 
   try {
     const memories = await listProjectMemories(api);
@@ -1273,6 +1286,7 @@ export async function showProjectMemoriesMenu(api: any) {
       />
     ));
   } catch (e: any) {
+    log.error(`showProjectMemoriesMenu: failed to load memories for ${projectName}`, e);
     api.ui.toast({ title: "Error", message: `Failed to load memories: ${e.message}`, variant: "error" });
     showProfilesMenuFn(api);
   }

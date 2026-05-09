@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 /**
  * Shared Types for SDD Model Select Plugin
  */

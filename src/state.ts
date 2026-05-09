@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 import { createSignal } from "solid-js";
 import { ActiveProfileState } from "./types";
 

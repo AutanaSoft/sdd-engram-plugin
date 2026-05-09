@@ -1,7 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
-import { createMemo } from "solid-js";
 import { formatContext } from "./src/utils";
 
 export function formatActiveModelBadgeText(profile: any): string {
@@ -19,21 +16,23 @@ export function formatActiveModelBadgeText(profile: any): string {
  * @param props.theme - The current UI theme configuration
  */
 export function ActiveModelBadge(props: { profile: any; theme: any }) {
-  const text = createMemo(() => formatActiveModelBadgeText(props.profile));
+  const text = formatActiveModelBadgeText(props.profile);
 
-  const color = createMemo(() => props.profile 
+  const color = props.profile
     ? (props.theme?.primary || "#00ff00") 
-    : (props.theme?.textMuted || "#888"));
+    : (props.theme?.textMuted || "#888");
 
-  const icon = createMemo(() => props.profile ? "󰚩 " : "󱚧 ");
+  const icon = props.profile ? "󰚩 " : "󱚧 ";
+  const bold = Boolean(props.profile);
+  const textColor = props.theme?.text || "inherit";
 
   return (
-    <box flexDirection="row" alignItems="center" padding={{ left: 1, right: 1 }}>
-      <text fg={color()} bold={props.profile ? true : false}>
-        {icon()}
+    <box flexDirection="row" alignItems="center" paddingLeft={1} paddingRight={1}>
+      <text fg={color} attributes={bold ? 1 : 0}>
+        {icon}
       </text>
-      <text fg={props.theme?.text || "inherit"}>
-        {text()}
+      <text fg={textColor}>
+        {text}
       </text>
     </box>
   );

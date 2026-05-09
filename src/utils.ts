@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 /**
  * General Plugin Utilities
  * 
@@ -10,6 +8,9 @@
 
 import { ActiveProfileState } from "./types";
 import { getOrchestratorPolicy } from "./orchestrator";
+import { createLogger } from "./logger";
+
+const log = createLogger("utils");
 
 const MANAGED_SDD_AGENT_EXCEPTIONS = new Set(["gentle-orchestrator"]);
 const FALLBACK_INELIGIBLE_AGENTS = new Set(["sdd-orchestrator", "gentle-orchestrator"]);
@@ -91,7 +92,7 @@ export function isFallbackEligibleSddAgent(agentName: string): boolean {
  * @param modelId - The unique model identifier
  * @returns Human-readable model information string
  */
-export function resolveModelInfo(api: any, modelId: string): string {
+export function resolveModelInfo(api: any, modelId?: string): string {
   if (!modelId) return "Unassigned";
   const [providerId, ...rest] = modelId.split("/");
   const modelKey = rest.join("/");
@@ -214,7 +215,8 @@ export function parseActiveProfileFromRaw(raw: string, api: any): ActiveProfileS
     const [providerId, ...rest] = modelId.split("/");
     const modelKey = rest.join("/");
     return resolveModelState(api, providerId, modelKey, reasoningEffort);
-  } catch {
+  } catch (error) {
+    log.warn("parseActiveProfileFromRaw: failed to parse active profile", error);
     return null;
   }
 }

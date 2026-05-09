@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 /**
  * SDD Profiles Logic
  *
@@ -179,7 +177,7 @@ export function readProfileModels(profilePath: string): ProfileModels {
   try {
     raw = JSON.parse(fs.readFileSync(profilePath, "utf-8"));
   } catch (e) {
-    if (e?.code === "ENOENT") {
+    if (hasErrorCode(e, "ENOENT")) {
       log.debug(`readProfileModels: file does not exist ${profilePath}`);
     } else {
       log.warn(`readProfileModels: failed to read or parse ${profilePath}`, e);
@@ -222,7 +220,7 @@ export function readProfileFallbackModels(profilePath: string): ProfileFallbackM
     const raw = JSON.parse(fs.readFileSync(profilePath, "utf-8"));
     return extractSddFallbackModels(raw);
   } catch (e) {
-    if (e?.code === "ENOENT") {
+    if (hasErrorCode(e, "ENOENT")) {
       log.debug(`readProfileFallbackModels: file does not exist ${profilePath}`);
     } else {
       log.warn(`readProfileFallbackModels: failed to read or parse ${profilePath}`, e);
@@ -239,7 +237,7 @@ export function readProfileData(profilePath: string): ProfileData {
     const rawContent = fs.readFileSync(profilePath, "utf-8").toString();
     return readProfileDataFromRaw(rawContent);
   } catch (e) {
-    if (e?.code === "ENOENT") {
+    if (hasErrorCode(e, "ENOENT")) {
       log.debug(`readProfileData: file does not exist ${profilePath}`);
     } else {
       log.warn(`readProfileData: failed to read ${profilePath}`, e);
@@ -355,7 +353,12 @@ function atomicWriteFile(filePath: string, content: string): void {
     fs.writeFileSync(tmpPath, content);
 
     tempFd = fs.openSync(tmpPath, "r+");
-    try { fs.fsyncSync(tempFd); } catch (e: any) { if (e?.code !== "EPERM") throw e; }
+    try {
+      fs.fsyncSync(tempFd);
+    } catch (e: any) {
+      if (!hasErrorCode(e, "EPERM")) throw e;
+      log.warn(`atomicWriteFile: fsync skipped for temporary file ${tmpPath}`, e);
+    }
     fs.closeSync(tempFd);
     tempFd = undefined;
 
@@ -363,7 +366,12 @@ function atomicWriteFile(filePath: string, content: string): void {
     renameCompleted = true;
 
     dirFd = fs.openSync(path.dirname(filePath), "r");
-    try { fs.fsyncSync(dirFd); } catch (e: any) { if (e?.code !== "EPERM") throw e; }
+    try {
+      fs.fsyncSync(dirFd);
+    } catch (e: any) {
+      if (!hasErrorCode(e, "EPERM")) throw e;
+      log.warn(`atomicWriteFile: directory fsync skipped for ${path.dirname(filePath)}`, e);
+    }
   } finally {
     if (typeof tempFd === "number") {
       fs.closeSync(tempFd);
@@ -375,7 +383,9 @@ function atomicWriteFile(filePath: string, content: string): void {
     if (!renameCompleted) {
       try {
         fs.unlinkSync(tmpPath);
-      } catch {}
+      } catch (e) {
+        log.warn(`atomicWriteFile: failed to remove temporary file ${tmpPath}`, e);
+      }
     }
   }
 }
@@ -390,13 +400,14 @@ function buildRenamedProfileVersion(versionFile: string, versionRaw: string, old
   let parsed: unknown;
   try {
     parsed = JSON.parse(versionRaw);
-  } catch {
+  } catch (e) {
+    log.warn(`buildRenamedProfileVersion: failed to parse version ${oldProfileFile}/${versionFile}`, e);
     throw new Error("Invalid profile version data");
   }
   if (
-    parsed?.version !== PROFILE_VERSION_FORMAT ||
-    parsed?.id !== oldVersionId ||
-    parsed?.profileFile !== oldProfileFile
+    !isProfileVersionRecord(parsed) ||
+    parsed.id !== oldVersionId ||
+    parsed.profileFile !== oldProfileFile
   ) {
     throw new Error("Invalid profile version data");
   }
@@ -436,13 +447,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function hasErrorCode(value: unknown, code: string): boolean {
+  return isRecord(value) && value.code === code;
+}
+
+function isProfileVersionRecord(value: unknown): value is Record<string, unknown> & Pick<ProfileVersion, "version" | "id" | "profileFile"> {
+  return isRecord(value)
+    && value.version === PROFILE_VERSION_FORMAT
+    && typeof value.id === "string"
+    && typeof value.profileFile === "string";
+}
+
 function sanitizeStringRecord(value: unknown): Record<string, string> | null {
   if (!isRecord(value)) return null;
 
   return Object.fromEntries(
     Object.entries(value)
       .filter(([, entryValue]) => typeof entryValue === "string")
-      .map(([key, entryValue]) => [key, entryValue.trim()])
+      .map(([key, entryValue]) => [key, String(entryValue).trim()])
   );
 }
 
@@ -473,7 +495,7 @@ function normalizePersistedBulkVersionOperation(operation: unknown): BulkProfile
 
 function normalizePersistedPhaseVersionOperation(operation: unknown): PhaseProfileVersionOperation | null {
   if (!isRecord(operation)) return null;
-  if (!isPrimarySddAgent(operation.phase) || isSddFallbackAgent(operation.phase)) return null;
+  if (typeof operation.phase !== "string" || !isPrimarySddAgent(operation.phase) || isSddFallbackAgent(operation.phase)) return null;
   if (
     operation.field !== PROFILE_PHASE_MODEL_FIELD.PRIMARY &&
     operation.field !== PROFILE_PHASE_MODEL_FIELD.FALLBACK
@@ -549,6 +571,8 @@ function normalizeProfileVersion(parsed: unknown, versionId: string): ProfileVer
 
   return {
     ...parsed,
+    version: PROFILE_VERSION_FORMAT,
+    profileFile: parseVersionId(versionId).profileFile,
     source,
     operation,
     id: versionId,
@@ -567,10 +591,10 @@ function readProfilePreviewFromRaw(beforeRaw: string): { models: ProfileModels; 
   try {
     const raw = JSON.parse(beforeRaw);
     return {
-      models: raw && typeof raw === "object" && !Array.isArray(raw)
-        ? raw.models && typeof raw.models === "object" && !Array.isArray(raw.models)
+      models: isRecord(raw)
+        ? isRecord(raw.models)
           ? Object.fromEntries(
-              Object.entries(raw.models).filter(([name, value]: any) => isPrimarySddAgent(name) && typeof value === "string")
+              Object.entries(sanitizeStringRecord(raw.models) || {}).filter(([name]) => isPrimarySddAgent(name))
             )
           : extractSddAgentModels(raw)
         : {},
@@ -702,10 +726,11 @@ export function readProfileVersion(versionId: string): ProfileVersion {
   let parsed: unknown;
   try {
     parsed = JSON.parse(fs.readFileSync(versionPath, "utf-8").toString());
-  } catch {
+  } catch (e) {
+    log.warn(`readProfileVersion: failed to parse ${versionPath}`, e);
     throw new Error("Invalid profile version data");
   }
-  if (parsed?.version !== PROFILE_VERSION_FORMAT || parsed?.id !== versionId || parsed?.profileFile !== parseVersionId(versionId).profileFile) {
+  if (!isProfileVersionRecord(parsed) || parsed.id !== versionId || parsed.profileFile !== parseVersionId(versionId).profileFile) {
     throw new Error("Invalid profile version data");
   }
   return normalizeProfileVersion(parsed, versionId);
@@ -724,7 +749,8 @@ export function listProfileVersions(profilePathOrFile: string): ProfileVersionMe
         const versionPath = path.join(versionDir, file);
         const parsed = JSON.parse(fs.readFileSync(versionPath, "utf-8").toString());
         return normalizeProfileVersion(parsed, versionId);
-      } catch {
+      } catch (e) {
+        log.warn(`listProfileVersions: skipping invalid version ${profileFile}/${file}`, e);
         return null;
       }
     })
@@ -754,7 +780,8 @@ export function restoreProfileVersion(profilePathOrFile: string, versionId: stri
   let parsedBeforeRaw: any;
   try {
     parsedBeforeRaw = JSON.parse(version.beforeRaw);
-  } catch {
+  } catch (e) {
+    log.warn(`restoreProfileVersion: beforeRaw is not JSON for ${versionId}; restoring raw content`, e);
     atomicWriteFile(profilePath, version.beforeRaw);
     return version;
   }
@@ -1110,7 +1137,8 @@ export async function activateProfileFile(api: any, profilePath: string, profile
     if (fs.existsSync(configPath)) {
       try {
         currentConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      } catch {
+      } catch (e) {
+        log.error(`activateProfileFile: failed to parse global config ${configPath}`, e);
         throw new Error("Global config JSON is invalid");
       }
     } else {
@@ -1159,6 +1187,7 @@ export async function activateProfileFile(api: any, profilePath: string, profile
     // global.config.update + optional cleanup rewrite above.
     return nextConfig;
   } catch (err: any) {
+    log.error(`activateProfileFile: failed to activate profile '${profileName}' from ${profilePath}`, err);
     api.ui.toast({ title: "Activation Failed", message: err.message, variant: "error" });
     return null;
   }
@@ -1175,7 +1204,7 @@ export function listProfileFiles(): string[] {
   try {
     return fs.readdirSync(profilesDir).filter((f) => isSddProfile(f));
   } catch (e) {
-    if (e?.code === "ENOENT") {
+    if (hasErrorCode(e, "ENOENT")) {
       log.debug(`listProfileFiles: directory does not exist ${profilesDir}`);
     } else {
       log.warn(`listProfileFiles: failed to read ${profilesDir}`, e);
@@ -1228,7 +1257,8 @@ export function migrateProfilesForRuntimePolicy(policy: OrchestratorPolicy): str
       const profileData = readProfileDataFromRaw(JSON.stringify(raw));
       writeProfileData(profilePath, profileData, policy);
       migrated.push(file);
-    } catch {
+    } catch (e) {
+      log.warn(`migrateProfilesForRuntimePolicy: failed to migrate ${profilePath}`, e);
       continue;
     }
   }
@@ -1296,7 +1326,8 @@ export function renameProfileFile(oldFileName: string, newFileName: string): voi
             rewrittenContent: JSON.stringify(version, null, 2),
             originalContent,
           };
-        } catch {
+        } catch (e) {
+          log.warn(`renameProfileFile: skipping invalid profile version ${safeOldFileName}/${versionFile}`, e);
           return null;
         }
       })
@@ -1327,19 +1358,25 @@ export function renameProfileFile(oldFileName: string, newFileName: string): voi
     for (const [versionPath, originalContent] of rewrittenVersionContents.entries()) {
       try {
         atomicWriteFile(versionPath, originalContent);
-      } catch {}
+      } catch (rollbackError) {
+        log.error(`renameProfileFile: failed to restore version content ${versionPath}`, rollbackError);
+      }
     }
 
     if (profileRenamed) {
       try {
         fs.renameSync(newPath, oldPath);
-      } catch {}
+      } catch (rollbackError) {
+        log.error(`renameProfileFile: failed to roll back profile rename ${newPath} -> ${oldPath}`, rollbackError);
+      }
     }
 
     if (versionDirRenamed) {
       try {
         fs.renameSync(newVersionDir, oldVersionDir);
-      } catch {}
+      } catch (rollbackError) {
+        log.error(`renameProfileFile: failed to roll back version directory ${newVersionDir} -> ${oldVersionDir}`, rollbackError);
+      }
     }
 
     throw error;

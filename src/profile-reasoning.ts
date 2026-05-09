@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 import type { ProfileData, ProfileConfigs } from "./types";
 import { isPrimarySddAgent, isSddFallbackAgent } from "./utils";
 import {

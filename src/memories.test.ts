@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listProjectMemories, deleteProjectMemory } from './memories';
-import { resolveProjectCandidates, resolveProjectName } from './config';
+import { resolveEngramProjectName, resolveProjectCandidates, resolveProjectName } from './config';
 
 vi.mock('./config');
 
@@ -14,6 +14,7 @@ describe('memories logic', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockFetch.mockReset();
+    vi.mocked(resolveEngramProjectName).mockReturnValue(null);
   });
 
   describe('listProjectMemories', () => {
@@ -54,6 +55,27 @@ describe('memories logic', () => {
         expect.stringContaining('/observations/recent?project=my-repo'),
         expect.anything()
       );
+    });
+
+    it('should use configured Engram project name as the only project candidate', async () => {
+      vi.mocked(resolveEngramProjectName).mockReturnValue('configured-project');
+      vi.mocked(resolveProjectCandidates).mockReturnValue(['repo1', 'repo2']);
+      vi.mocked(resolveProjectName).mockReturnValue('repo1');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, title: 'configured', project: 'configured-project' }]
+      });
+
+      const result = await listProjectMemories(mockApi);
+
+      expect(result).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/observations/recent?project=configured-project'),
+        expect.anything()
+      );
+      expect(resolveProjectCandidates).not.toHaveBeenCalled();
     });
 
     it('should query all candidates and merge results', async () => {

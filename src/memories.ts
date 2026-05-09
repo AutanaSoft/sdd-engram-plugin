@@ -1,6 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-// @ts-nocheck
-
 /**
  * Engram Memories Logic
  * 
@@ -8,8 +6,7 @@
  * and manage project-specific observations.
  */
 
-import * as path from "node:path";
-import { resolveProjectCandidates, resolveProjectName } from "./config";
+import { resolveEngramProjectName, resolveProjectCandidates, resolveProjectName } from "./config";
 import { createLogger } from "./logger";
 import type { EngramObservation } from "./types";
 
@@ -47,8 +44,9 @@ function normalizeMemory(memory: any, fallbackProject: string): EngramObservatio
  * @returns Array of normalized Engram observations
  */
 export async function listProjectMemories(api: any): Promise<EngramObservation[]> {
-  const projectName = resolveProjectName(api);
-  const projectCandidates = resolveProjectCandidates(api);
+  const configuredProjectName = resolveEngramProjectName(api);
+  const projectName = configuredProjectName || resolveProjectName(api);
+  const projectCandidates = configuredProjectName ? [configuredProjectName] : resolveProjectCandidates(api);
 
   if (projectCandidates.length === 0) return [];
 

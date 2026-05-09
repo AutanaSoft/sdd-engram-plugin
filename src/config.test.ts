@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import * as fs from 'node:fs';
 import * as child_process from 'node:child_process';
 import * as config from './config';
-const { resolvePaths, resolveProjectCandidates, resolveProjectName, resolveWorkspaceRoot } = config;
+const { resolvePaths, resolveEngramProjectName, resolveProjectCandidates, resolveProjectName, resolveWorkspaceRoot } = config;
 
 vi.mock('node:os');
+vi.mock('node:fs');
 vi.mock('node:child_process');
 
 describe('config logic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(false);
   });
 
   describe('resolvePaths', () => {
@@ -67,6 +70,42 @@ describe('config logic', () => {
 
       const candidates = resolveProjectCandidates(api);
       expect(candidates).toEqual(['my-repo']); // only directory name fallback
+    });
+  });
+
+  describe('resolveEngramProjectName', () => {
+    it('should return project_name from workspace .engram config', () => {
+      const api = { state: { path: { directory: '/workspace/root' } } };
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{"project_name":"custom-project"}');
+
+      expect(resolveEngramProjectName(api)).toBe('custom-project');
+      expect(fs.readFileSync).toHaveBeenCalledWith(
+        path.join('/workspace/root', '.engram', 'config.json'),
+        'utf-8'
+      );
+    });
+
+    it('should return null when .engram config does not exist', () => {
+      const api = { state: { path: { directory: '/workspace/root' } } };
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      expect(resolveEngramProjectName(api)).toBeNull();
+      expect(fs.readFileSync).not.toHaveBeenCalled();
+    });
+
+    it('should return null and log when .engram config is invalid', () => {
+      const api = { state: { path: { directory: '/workspace/root' } } };
+      const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{invalid json');
+
+      expect(resolveEngramProjectName(api)).toBeNull();
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[sdd-plugin][config] resolveEngramProjectName: failed to read'),
+        expect.any(Error)
+      );
+      stderrSpy.mockRestore();
     });
   });
 
