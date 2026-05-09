@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.5.0...v1.5.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* restore opencode tui integration ([090321d](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/090321db7083d477bdd2d0b68755d87a7412ef0e))
+
 # [1.5.0](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.4.2...v1.5.0) (2026-05-07)
 
 
