@@ -2084,6 +2084,100 @@ describe('profiles logic', () => {
       }));
     });
 
+    it('shows sanitized config validation details when config update fails', async () => {
+      vi.mocked(fs.existsSync).mockImplementation((filePath: any) => String(filePath) === '/mock/config/opencode.json');
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: any) => {
+        if (String(filePath) === '/mock/profiles/team.json') {
+          return JSON.stringify({ models: { 'sdd-init': 'gpt-4' } });
+        }
+
+        return JSON.stringify({
+          theme: 'gentleman-kanagawa',
+          agent: { 'sdd-init': { model: 'old/model' } },
+          secretToken: 'do-not-show',
+        });
+      });
+
+      const toast = vi.fn();
+      const api = {
+        state: { provider: [] },
+        ui: { toast },
+        client: {
+          global: {
+            config: {
+              get: vi.fn(),
+              update: vi.fn().mockResolvedValue({
+                error: {
+                  name: 'ConfigInvalidError',
+                  path: '~/.config/opencode/opencode.json',
+                  issues: [
+                    {
+                      message: 'Unrecognized key: theme',
+                      keys: ['theme'],
+                      path: [],
+                    },
+                  ],
+                },
+              }),
+            },
+          },
+        },
+      } as any;
+
+      const result = await activateProfileFile(api, '/mock/profiles/team.json', 'team');
+
+      expect(result).toBeNull();
+      const message = toast.mock.calls[0]?.[0]?.message;
+      expect(message).toContain('Failed to update global runtime configuration');
+      expect(message).toContain('ConfigInvalidError');
+      expect(message).toContain('~/.config/opencode/opencode.json');
+      expect(message).toContain('Unrecognized key: theme');
+      expect(message).toContain('keys: theme');
+      expect(message).toContain('path: <root>');
+      expect(message).not.toContain('secretToken');
+      expect(message).not.toContain('do-not-show');
+    });
+
+    it('falls back to a generic config update error when no safe details are available', async () => {
+      vi.mocked(fs.existsSync).mockImplementation((filePath: any) => String(filePath) === '/mock/config/opencode.json');
+      vi.mocked(fs.readFileSync).mockImplementation((filePath: any) => {
+        if (String(filePath) === '/mock/profiles/team.json') {
+          return JSON.stringify({ models: { 'sdd-init': 'gpt-4' } });
+        }
+
+        return JSON.stringify({
+          agent: { 'sdd-init': { model: 'old/model' } },
+        });
+      });
+
+      const toast = vi.fn();
+      const api = {
+        state: { provider: [] },
+        ui: { toast },
+        client: {
+          global: {
+            config: {
+              get: vi.fn(),
+              update: vi.fn().mockResolvedValue({
+                error: {
+                  config: { secretToken: 'do-not-show' },
+                },
+              }),
+            },
+          },
+        },
+      } as any;
+
+      const result = await activateProfileFile(api, '/mock/profiles/team.json', 'team');
+
+      expect(result).toBeNull();
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Activation Failed',
+        message: 'Failed to update global runtime configuration',
+        variant: 'error',
+      });
+    });
+
     it('applies valid primary reasoning effort and warns for stale saved values', async () => {
       vi.mocked(fs.existsSync).mockImplementation((filePath: any) => String(filePath) === '/mock/config/opencode.json');
       vi.mocked(fs.readFileSync).mockImplementation((filePath: any) => {

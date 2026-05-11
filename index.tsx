@@ -8,6 +8,7 @@
 
 import * as fs from "node:fs";
 import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui";
+import { registerExCommands } from "@opentui/keymap/addons";
 import { Show, createEffect, createRoot, untrack } from "solid-js";
 import { ActiveModelBadge } from "./components";
 import { resolvePaths } from "./src/config";
@@ -21,9 +22,9 @@ import {
 	showProfilesMenu,
 	showProjectMemoriesMenu,
 } from "./src/dialogs";
+import { createLogger } from "./src/logger";
 import { getOrchestratorPolicy } from "./src/orchestrator";
 import { migrateProfilesForRuntimePolicy } from "./src/profiles";
-import { createLogger } from "./src/logger";
 // Direct imports to avoid barrel resolution issues in some environments
 import {
 	activeProfile,
@@ -108,31 +109,52 @@ function resolveDisplayedModel(api: any, sessionId?: string) {
 	return resolveSessionActiveModel(api, sessionId) || activeProfile();
 }
 
+function openProfiles(api: any) {
+	showProfilesMenu(api);
+}
+
 function registerProfilesCommand(api: any) {
 	createRoot((disposeRoot) => {
 		api.lifecycle.onDispose(disposeRoot);
+
+		const disposeEx = registerExCommands(api.keymap);
+		api.lifecycle.onDispose(disposeEx);
 
 		const disposeLayer = api.keymap.registerLayer({
 			priority: 100,
 			commands: [
 				{
-					name: "sdd-model",
+					name: ":sdd-model",
 					title: "󰓅 SDD Profiles",
 					desc: "Manage SDD profiles",
 					category: "SDD",
+					nargs: "0",
 					run: () => {
-						showProfilesMenu(api);
+						openProfiles(api);
 						return true;
 					},
 				},
 			],
 			bindings: [
-				{ key: "alt+k", cmd: "sdd-model" },
-				{ key: "super+k", cmd: "sdd-model" },
+				{ key: "alt+k", cmd: ":sdd-model" },
+				{ key: "super+k", cmd: ":sdd-model" },
 			],
 		});
-
 		api.lifecycle.onDispose(disposeLayer);
+
+		if (api.command?.register) {
+			const disposeLegacy = api.command.register(() => [
+				{
+					title: "󰓅 SDD Profiles",
+					value: "sdd-model",
+					description: "Manage SDD profiles",
+					category: "SDD",
+					slash: { name: "sdd-model" },
+					onSelect: () => openProfiles(api),
+				},
+			]);
+			api.lifecycle.onDispose(disposeLegacy);
+		}
 	});
 }
 

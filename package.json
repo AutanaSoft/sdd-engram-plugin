@@ -50,7 +50,7 @@
 		"vitest": "^4.1.4"
 	},
 	"peerDependencies": {
-		"@opencode-ai/plugin": ">=1.14.44",
+		"@opencode-ai/plugin": ">=1.14.48",
 		"@opentui/core": ">=0.2.6 <1",
 		"@opentui/keymap": ">=0.2.6 <1",
 		"@opentui/solid": ">=0.2.6 <1",
@@ -58,6 +58,6 @@
 	},
 	"engines": {
 		"node": ">=24 <25",
-		"opencode": ">=1.14.44"
+		"opencode": ">=1.14.48"
 	}
 }

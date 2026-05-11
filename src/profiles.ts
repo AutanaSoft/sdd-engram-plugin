@@ -53,9 +53,72 @@ import {
 const PROFILE_VERSION_FORMAT = 1;
 const DEFAULT_PROFILE_VERSION_RETENTION = 60;
 const PROFILE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._ -]*$/;
+const CONFIG_UPDATE_ERROR_MESSAGE = "Failed to update global runtime configuration";
 
 function isUnassignedProfileValue(value: unknown): boolean {
   return typeof value !== "string" || value.trim().length === 0;
+}
+
+function safeString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function formatIssuePath(pathValue: unknown): string | undefined {
+  if (Array.isArray(pathValue)) {
+    const parts = pathValue.map((part) => String(part).trim()).filter(Boolean);
+    return parts.length > 0 ? parts.join(".") : "<root>";
+  }
+  return safeString(pathValue);
+}
+
+function formatConfigIssue(issue: unknown): string | undefined {
+  if (!issue || typeof issue !== "object" || Array.isArray(issue)) return undefined;
+  const record = issue as Record<string, unknown>;
+  const details: string[] = [];
+  const message = safeString(record.message);
+  if (message) details.push(message);
+
+  const keys = Array.isArray(record.keys)
+    ? record.keys.map((key) => String(key).trim()).filter(Boolean)
+    : [];
+  if (keys.length > 0) details.push(`keys: ${keys.join(", ")}`);
+
+  const path = formatIssuePath(record.path);
+  if (path) details.push(`path: ${path}`);
+
+  return details.length > 0 ? details.join("; ") : undefined;
+}
+
+function formatConfigUpdateError(error: unknown): string {
+  const candidates = [error];
+  if (error && typeof error === "object" && !Array.isArray(error)) {
+    const record = error as Record<string, unknown>;
+    candidates.push(record.data, record.cause);
+  }
+
+  const details: string[] = [];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) continue;
+    const record = candidate as Record<string, unknown>;
+
+    const name = safeString(record.name);
+    if (name) details.push(name);
+
+    const configPath = safeString(record.path);
+    if (configPath) details.push(`config: ${configPath}`);
+
+    const issues = Array.isArray(record.issues) ? record.issues : [];
+    for (const issue of issues) {
+      const formatted = formatConfigIssue(issue);
+      if (formatted) details.push(formatted);
+    }
+
+    if (details.length > 0) break;
+  }
+
+  return details.length > 0
+    ? `${CONFIG_UPDATE_ERROR_MESSAGE}: ${details.join(" | ")}`
+    : CONFIG_UPDATE_ERROR_MESSAGE;
 }
 
 /**
@@ -1161,7 +1224,7 @@ export async function activateProfileFile(api: any, profilePath: string, profile
       config: nextConfig,
     });
 
-    if (result?.error) throw new Error(result.error.message || "Failed to update global runtime configuration");
+    if (result?.error) throw new Error(formatConfigUpdateError(result.error));
 
     if (fs.existsSync(configPath)) {
       const shouldRewriteConfigFile = reasoningResult.clearedAgents.length > 0;
