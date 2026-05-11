@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.5.1...v1.6.0) (2026-05-11)
+
+
+### Features
+
+* add badge visibility and display mode toggles ([89870b5](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/89870b57cf854d008236c4de7c94a1a210cefe44)), closes [#23](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/issues/23) [#25](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/issues/25)
+
 ## [1.5.1](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.5.0...v1.5.1) (2026-05-09)
 
 
