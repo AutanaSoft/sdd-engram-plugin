@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.1...v1.6.2) (2026-05-12)
+
+
+### Bug Fixes
+
+* align opentui runtime support with 0.2.7 ([ea55ea6](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/ea55ea675aac36600f28d1163185b9283d1adbf5))
+
 ## [1.6.1](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.0...v1.6.1) (2026-05-11)
 
 
