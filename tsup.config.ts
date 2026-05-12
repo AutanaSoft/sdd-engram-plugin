@@ -5,6 +5,7 @@ export default defineConfig({
   entry: {
     tui: 'index.tsx',
   },
+  noExternal: ['@opentui/solid'],
   format: ['esm'],
   clean: true,
   dts: false,
@@ -12,8 +13,6 @@ export default defineConfig({
   minify: false,
   external: [
     '@opencode-ai/plugin',
-    '@opentui/core',
-    '@opentui/solid',
     'solid-js',
     'fs',
     'path',
