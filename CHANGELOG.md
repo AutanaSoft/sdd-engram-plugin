@@ -1,3 +1,10 @@
+## [1.6.4](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.3...v1.6.4) (2026-05-13)
+
+
+### Bug Fixes
+
+* update opentui dependencies ([b8b228f](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/b8b228fb872dbcc1315d85eaf73cea0212a4a684))
+
 ## [1.6.3](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.2...v1.6.3) (2026-05-12)
 
 
