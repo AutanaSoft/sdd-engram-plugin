@@ -1,3 +1,11 @@
+## [1.6.5](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.4...v1.6.5) (2026-05-14)
+
+
+### Bug Fixes
+
+* add host compatibility helpers for slot rendering ([c09d8a3](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/c09d8a398d5c52d45048a3650700785536fe1a1f))
+* degrade slots when host renderer is unavailable ([9bd91ac](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/9bd91acac8431a8210dee805bbc3a6c1d53b9d63))
+
 ## [1.6.4](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.3...v1.6.4) (2026-05-13)
 
 
