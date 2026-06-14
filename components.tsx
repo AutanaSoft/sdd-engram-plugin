@@ -17,6 +17,21 @@ export function formatActiveModelBadgeText(
   return `${label} · ${formatContext(profile.contextLimit)}${effortLabel}`;
 }
 
+// Style primitives resolved once at setup time. Solid's JSX prop bindings
+// are reactive; writing fg/attributes after the host TextBuffer is recreated
+// (e.g. on terminal resize) can crash the renderer.
+export function resolveActiveModelBadgeStyle(
+  profile: ActiveProfileState | null | undefined,
+  theme: any,
+): { iconFg: string; iconAttributes: number; labelFg: string } {
+  const iconFg = profile
+    ? theme?.primary || "#00ff00"
+    : theme?.textMuted || "#888";
+  const iconAttributes = profile ? 1 : 0;
+  const labelFg = theme?.text || "inherit";
+  return { iconFg, iconAttributes, labelFg };
+}
+
 /**
  * UI Badge component that displays information about the active SDD model
  *
@@ -29,19 +44,17 @@ export function ActiveModelBadge(props: {
   theme: any;
   displayMode?: BadgeDisplayMode;
 }) {
+  const { iconFg, iconAttributes, labelFg } = resolveActiveModelBadgeStyle(
+    props.profile,
+    props.theme,
+  );
+
   return (
     <box flexDirection="row" alignItems="center" paddingLeft={1} paddingRight={1}>
-      <text
-        fg={
-          props.profile
-            ? props.theme?.primary || "#00ff00"
-            : props.theme?.textMuted || "#888"
-        }
-        attributes={props.profile ? 1 : 0}
-      >
+      <text fg={iconFg} attributes={iconAttributes}>
         {props.profile ? "󰚩 " : "󱚧 "}
       </text>
-      <text fg={props.theme?.text || "inherit"}>
+      <text fg={labelFg}>
         {formatActiveModelBadgeText(props.profile, props.displayMode)}
       </text>
     </box>
