@@ -1,3 +1,11 @@
+## [1.6.7](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.6...v1.6.7) (2026-06-29)
+
+
+### Bug Fixes
+
+* **deps:** restore solid peer compatibility ([4dd8902](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/4dd89027ded851fcb981ad5835a18ee7e677e607))
+* **subagents:** include review and jd agents ([e0ce025](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/commit/e0ce0258ccbc074503520de6607f5a35094ac050))
+
 ## [1.6.6](https://github.com/j0k3r-dev-rgl/sdd-engram-plugin/compare/v1.6.5...v1.6.6) (2026-05-14)
 
 
