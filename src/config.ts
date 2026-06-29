@@ -24,7 +24,10 @@ export type Paths = {
 	profileVersionsDir: string;
 	configPath: string;
 	backupPath: string;
+	pluginConfigPath: string;
 };
+
+const DEFAULT_PLUGIN_SHORTCUTS = ["alt+k", "super+k"] as const;
 
 /**
  * Resolves all necessary system paths for the plugin
@@ -42,7 +45,40 @@ export function resolvePaths(): Paths {
 		profileVersionsDir: path.join(configRoot, "profile-versions"),
 		configPath: path.join(configRoot, "opencode.json"),
 		backupPath: path.join(configRoot, "opencode.json.bak"),
+		pluginConfigPath: path.join(configRoot, "sdd-model-select.json"),
 	};
+}
+
+function normalizeShortcutBinding(value: unknown): string | null {
+	if (typeof value !== "string") return null;
+	const normalized = value.trim().toLowerCase().replace(/\s*\+\s*/g, "+").replace(/\s+/g, "");
+	return normalized ? normalized : null;
+}
+
+function expandShortcutBinding(binding: string): string[] {
+	if (!binding.startsWith("alt+")) return [binding];
+	return [binding, `super+${binding.slice(4)}`];
+}
+
+export function readPluginShortcutBindings(): string[] {
+	const { pluginConfigPath } = resolvePaths();
+	if (!fs.existsSync(pluginConfigPath)) return [...DEFAULT_PLUGIN_SHORTCUTS];
+
+	try {
+		const raw = JSON.parse(fs.readFileSync(pluginConfigPath, "utf-8"));
+		const explicitShortcuts = Array.isArray(raw?.shortcuts)
+			? raw.shortcuts.map(normalizeShortcutBinding).filter(Boolean) as string[]
+			: [];
+		if (explicitShortcuts.length > 0) return [...new Set(explicitShortcuts)];
+
+		const shortcut = normalizeShortcutBinding(raw?.shortcut);
+		if (shortcut) return [...new Set(expandShortcutBinding(shortcut))];
+		log.warn(`readPluginShortcutBindings: missing shortcut/shortcuts in ${pluginConfigPath}`);
+	} catch (e) {
+		log.warn(`readPluginShortcutBindings: failed to read ${pluginConfigPath}`, e);
+	}
+
+	return [...DEFAULT_PLUGIN_SHORTCUTS];
 }
 
 /**

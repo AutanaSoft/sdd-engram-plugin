@@ -4,7 +4,14 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as child_process from 'node:child_process';
 import * as config from './config';
-const { resolvePaths, resolveEngramProjectName, resolveProjectCandidates, resolveProjectName, resolveWorkspaceRoot } = config;
+const {
+  readPluginShortcutBindings,
+  resolvePaths,
+  resolveEngramProjectName,
+  resolveProjectCandidates,
+  resolveProjectName,
+  resolveWorkspaceRoot,
+} = config;
 
 vi.mock('node:os');
 vi.mock('node:fs');
@@ -40,9 +47,43 @@ describe('config logic', () => {
         const paths = resolvePaths();
         expect(paths.configRoot).toBe(path.join('/custom/config', 'opencode'));
         expect(paths.profileVersionsDir).toBe(path.join('/custom/config', 'opencode', 'profile-versions'));
+        expect(paths.pluginConfigPath).toBe(path.join('/custom/config', 'opencode', 'sdd-model-select.json'));
       } finally {
         process.env = originalEnv;
       }
+    });
+  });
+
+  describe('readPluginShortcutBindings', () => {
+    it('should return default dual-platform shortcuts when plugin config is missing', () => {
+      vi.mocked(os.homedir).mockReturnValue('/home/user');
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      expect(readPluginShortcutBindings()).toEqual(['alt+k', 'super+k']);
+    });
+
+    it('should expand shortcut into alt and super bindings', () => {
+      vi.mocked(os.homedir).mockReturnValue('/home/user');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{"shortcut":"Alt + J"}');
+
+      expect(readPluginShortcutBindings()).toEqual(['alt+j', 'super+j']);
+    });
+
+    it('should honor explicit shortcuts array as-is after normalization', () => {
+      vi.mocked(os.homedir).mockReturnValue('/home/user');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{"shortcuts":[" Ctrl + J ","super+j","ctrl+j"]}');
+
+      expect(readPluginShortcutBindings()).toEqual(['ctrl+j', 'super+j']);
+    });
+
+    it('should fall back to defaults when plugin config JSON is invalid', () => {
+      vi.mocked(os.homedir).mockReturnValue('/home/user');
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue('{invalid json');
+
+      expect(readPluginShortcutBindings()).toEqual(['alt+k', 'super+k']);
     });
   });
 

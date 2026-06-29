@@ -11,7 +11,7 @@ import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { registerExCommands } from "@opentui/keymap/addons";
 import { Show, createEffect, createRoot, untrack } from "solid-js";
 import { ActiveModelBadge } from "./components";
-import { resolvePaths } from "./src/config";
+import { readPluginShortcutBindings, resolvePaths } from "./src/config";
 import {
 	ACTIVE_PROFILE_NAME_KV_KEY,
 	BADGE_DISPLAY_MODE_KV_KEY,
@@ -119,7 +119,7 @@ function openProfiles(api: any) {
 	showProfilesMenu(api);
 }
 
-function registerProfilesCommand(api: any) {
+function registerProfilesCommand(api: any, bindings: string[]) {
 	createRoot((disposeRoot) => {
 		api.lifecycle.onDispose(disposeRoot);
 
@@ -141,10 +141,7 @@ function registerProfilesCommand(api: any) {
 					},
 				},
 			],
-			bindings: [
-				{ key: "alt+k", cmd: ":sdd-model" },
-				{ key: "super+k", cmd: ":sdd-model" },
-			],
+			bindings: bindings.map((key) => ({ key, cmd: ":sdd-model" })),
 		});
 		api.lifecycle.onDispose(disposeLayer);
 
@@ -249,6 +246,12 @@ const tui: TuiPlugin = async (api) => {
 		undefined,
 	);
 
+	const shortcutBindings = safeHostAction(
+		"load plugin shortcut bindings",
+		() => readPluginShortcutBindings(),
+		["alt+k", "super+k"],
+	);
+
 	// Load and set the active profile in the global state
 	const profile = await safeHostAsyncAction(
 		"read active profile",
@@ -282,7 +285,7 @@ const tui: TuiPlugin = async (api) => {
 	}, undefined);
 
 	// Register the main command using the current OpenCode TUI keymap API.
-	safeHostAction("register profiles command", () => registerProfilesCommand(api), undefined);
+	safeHostAction("register profiles command", () => registerProfilesCommand(api, shortcutBindings), undefined);
 
 	// Register UI slots inside a Solid root because the host slot plugin creates cleanups.
 	safeHostAction("register slots", () => registerSlots(api), undefined);

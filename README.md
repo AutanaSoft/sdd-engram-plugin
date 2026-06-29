@@ -118,6 +118,25 @@ Open the plugin with:
 - **Shortcut:** `Alt + K` (Linux/Win) or `Cmd + K` (macOS)
 - **Slash command:** `/sdd-model`
 
+To customize the shortcut, create `~/.config/opencode/sdd-model-select.json`:
+
+```json
+{
+  "shortcut": "ctrl+j"
+}
+```
+
+Notes:
+
+- `shortcut` accepts one binding string. If it starts with `alt+`, the plugin also registers the matching `super+` binding for macOS compatibility.
+- `shortcuts` accepts an explicit array when you want full control:
+
+```json
+{
+  "shortcuts": ["ctrl+j", "super+j"]
+}
+```
+
 ### Workflow
 
 1. Open the plugin (`Alt+K` / `Cmd+K` or `/sdd-model`).
